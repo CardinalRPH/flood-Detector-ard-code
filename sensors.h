@@ -13,8 +13,8 @@
 // VCC	5V
 // ECHO	GPIO18
 // GND	GND
-#define echoPin 18
-#define trigPin 5
+#define TRIG_PIN  5  // ESP32 GPIO5
+#define ECHO_PIN  18  // ESP32 GPIO18 (via voltage divider!)
 
 // DHT 11 init sensor pin
 // 1 GND
@@ -26,31 +26,32 @@
 DHT dht(DHTPIN, DHTTYPE);
 
 void initSensors() {
-  pinMode(trigPin, OUTPUT);
-  pinMode(echoPin, INPUT);
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+  digitalWrite(TRIG_PIN, LOW);
   dht.begin();
-  
+
   delay(2000);
 }
 
 //depth sensor
-int getSensor1() {
-  digitalWrite(trigPin, LOW);
+inline int getSensor1() {
+  digitalWrite(TRIG_PIN, LOW);
   delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);  // pulse 10us
+  digitalWrite(TRIG_PIN, LOW);
 
-  digitalWrite(trigPin, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trigPin, LOW);
+  // Baca lama pantulan echo
+  long duration = pulseIn(ECHO_PIN, HIGH, 30000);  // timeout 30ms ~ 5 meter
 
-  long duration = pulseIn(echoPin, HIGH);
   if (duration == 0) {
-    return -1;
+    Serial.println("No echo received");
+  } else {
+    // Kecepatan suara 0.0343 cm/us
+    float distance = duration * 0.0343 / 2;
+    return distance;
   }
-
-  int distance = duration * 0.0344 / 2;
-  Serial.println("Dept sens");
-  Serial.println(distance);
-  return distance;
 }
 
 // temperature sensor

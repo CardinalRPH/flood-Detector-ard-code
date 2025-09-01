@@ -7,18 +7,12 @@
 
 unsigned long lastTime = 0;
 
-JsonDocument httpResData;
-DeserializationError parseError;
-long duration; // Time taken for the pulse to reach the receiver
-int distance; 
+// gunakan kapasitas yang jelas
+StaticJsonDocument<512> httpResData;
 
 void setup() {
-  pinMode(trigPin, OUTPUT); 
-  pinMode(echoPin, INPUT);  
-  // Serial.begin(9600);
-  Serial.println("Distance measurement using JSN-SR04T");
   delay(500);
-  Serial.begin(9600);
+  Serial.begin(115200);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -26,76 +20,59 @@ void setup() {
   }
   Serial.println("\nWiFi connected. IP: " + WiFi.localIP().toString());
 
-  // initSensors();
+  initSensors();
   // Web server
-  // setupWebServer();
+  setupWebServer();
 }
 
 void loop() {
-  digitalWrite(trigPin, LOW);
-  delayMicroseconds(2);
+  server.handleClient();
 
-  digitalWrite(trigPin, HIGH);  // turn on the Trigger to generate pulse
-  delayMicroseconds(10);        // keep the trigger "ON" for 10 ms to generate pulse
-  digitalWrite(trigPin, LOW);   // Turn off the pulse trigger to stop pulse
+  // POST setiap interval
+  if ((millis() - lastTime) >= configData.timerDelay) {
+    lastTime = millis();
 
-  // If pulse reached the receiver echoPin
-  // become high Then pulseIn() returns the
-  // time taken by the pulse to reach the receiver
-  duration = pulseIn(echoPin, HIGH);
-  distance = duration * 0.0344 / 2;
+    if (WiFi.status() == WL_CONNECTED) {
+      WiFiClient client;   // bikin client baru setiap request
+      HTTPClient http;
 
-  Serial.print("Distance: ");
-  Serial.print(distance);
-  Serial.println(" cm");
-  delay(100);
-  // server.handleClient();
+      if (http.begin(client, configData.serverName)) {
+        http.useHTTP10(true); // disable keep-alive, aman untuk ESP32
+        http.addHeader("Content-Type", "application/json");
 
-  // // POST evry interval
-  // if ((millis() - lastTime) >= configData.timerDelay) {
-  //   lastTime = millis();
-  //   if (WiFi.status() == WL_CONNECTED) {
-  //     HTTPClient http;
-  //     WiFiClient client;
+        // JSON yang dikirim
+        StaticJsonDocument<256> docToSend;
+        docToSend["uuid_device"] = configData.uuidDevice;
+        docToSend["depth"]       = getSensor1();
+        docToSend["temperature"] = getSensor2();
+        docToSend["humidity"]    = getSensor3();
 
-  //     http.begin(client, configData.serverName);
-  //     http.addHeader("Content-Type", "application/json");
+        String bodyDoc;
+        serializeJson(docToSend, bodyDoc);
 
-  //     JsonDocument docToSent;
-  //     docToSent["uuid_device"] = configData.uuidDevice;
-  //     docToSent["depth"] = getSensor1();
-  //     docToSent["temperature"] = getSensor2();
-  //     docToSent["humidity"] = getSensor3();
+        int httpResCode = http.POST(bodyDoc);
+        if (httpResCode > 0) {
+          Serial.printf("[POST] Code: %d\n", httpResCode);
+          String httpPayload = http.getString();
+          Serial.println(httpPayload);
 
-  //     String bodyDoc;
-  //     serializeJson(docToSent, bodyDoc);
+          // parse JSON response
+          DeserializationError parseError = deserializeJson(httpResData, httpPayload);
+          if (parseError) {
+            Serial.print("Failed to parse JSON: ");
+            Serial.println(parseError.c_str());
+          } else {
+            int statusCode = httpResData["status"] | -1; // default -1 kalau tidak ada
+            Serial.printf("Server status: %d\n", statusCode);
+          }
+        } else {
+          Serial.print("HTTP POST error: ");
+          Serial.println(httpResCode);
+        }
 
-  //     int httpResCode = http.POST(bodyDoc);
-  //     if (httpResCode > 0) {
-  //       Serial.printf("[POST] Code: %d\n", httpResCode);
-  //       String httpPayload = http.getString();
-
-  //       parseError = deserializeJson(httpResData, httpPayload);
-
-  //       if (parseError) {
-  //         Serial.print("Failed to parse JSON: ");
-  //         Serial.println(parseError.c_str());
-  //         return;
-  //       }
-
-  //       int statusCode = httpResData["status"];
-  //       if (statusCode == 0) {
-  //         Serial.print("Zero (0) status code");
-  //         Serial.println("Please check on the server response");
-  //         return;
-  //       }
-  //       Serial.println("Code Fetched");
-  //     } else {
-  //       Serial.print("Error code: ");
-  //       Serial.println(httpResCode);
-  //     }
-  //     //end of http
-  //     http.end();
-  //   }
-  // }
+        http.end(); // WAJIB: selalu dipanggil
+      }
+    }
+  }
 }
+
