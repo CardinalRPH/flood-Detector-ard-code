@@ -2,6 +2,7 @@
 #include <HTTPClient.h>
 #include "config.h"
 #include "storage.h"
+#include "output.h"
 #include "webserver_utils.h"
 #include <ArduinoJson.h>
 
@@ -20,7 +21,10 @@ void setup() {
   }
   Serial.println("\nWiFi connected. IP: " + WiFi.localIP().toString());
 
+  // init Sensor Pin
   initSensors();
+  //init Output Pin
+  initOutput();
   // Web server
   setupWebServer();
 }
@@ -62,7 +66,11 @@ void loop() {
             Serial.print("Failed to parse JSON: ");
             Serial.println(parseError.c_str());
           } else {
-            int statusCode = httpResData["status"] | -1; // default -1 kalau tidak ada
+            int statusCode = httpResData["status"] | 0; // default -1 kalau tidak ada
+            if(statusCode == 1) {
+              int relayValue = httpResData["sirine"] | 0;
+              setRelay(relayValue);
+            }
             Serial.printf("Server status: %d\n", statusCode);
           }
         } else {
