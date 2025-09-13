@@ -2,7 +2,7 @@
 #include <WiFi.h>
 
 // Buat HTML page
-String buildHtmlPage(String serverName, unsigned long timerDelay, int uuid_device, int s1, int s2, int s3) {
+String buildHtmlPage(String serverNameA, String serverNameB, unsigned long timerDelay, int uuid_device, int s1, int s2, int s3) {
   unsigned long minutes = timerDelay / 60000UL;
   if (minutes == 0) minutes = 0;
 
@@ -19,24 +19,36 @@ body { font-family: Arial; background: #0f172a; color: #e5e7eb; }
 </head><body>
 <div class='card'>
   <h1>ESP32 Config</h1>
-  <form action='/save' method='POST'>
-    <label>Server URL</label>
-    <input name='server' type='url' value=')====";
-  html += serverName;
-  html += R"====(' /><br>
+ <div> 
+ <label>Server URL</label>
+    <h3>
+    URL A: )====";
+  html += serverNameA;
+  html += R"====(
+    </h3>
+    <br>
 
-    <label>Interval (menit)</label>
-    <input name='delay' type='number' value=')====";
+    <h3>
+    URL B:  )====";
+  html += serverNameB;
+  html += R"====(
+    </h3>
+    <br>
+
+    <h3>
+    Interval (menit) : )====";
   html += String(minutes);
-  html += R"====(' /><br>
+  html += R"====(
+    </h3>
+    <br>
 
-    <label>UUID Device</label>
-    <input name='uuid' type='number' value=')====";
+    <h3>
+    UUID : )====";
   html += String(uuid_device);
-  html += R"====(' /><br>
-
-    <button class='btn'>Save</button>
-  </form>
+  html += R"====(
+    </h3>
+    <br>
+ </div>
 
   <div class='sensor'>
     <h3>Sensor Data</h3>

@@ -23,10 +23,10 @@ ESPConfig loadConfig() {
 }
 
 // Save config ke NVS
-void saveConfig(String server, unsigned long delay, int uuid) {
-  preferences.begin("config", false);
-  preferences.putString("server", server);
-  preferences.putULong("delay", delay);
-  preferences.putInt("uuid", uuid);
-  preferences.end();
-}
+// void saveConfig(String server, unsigned long delay, int uuid) {
+//   preferences.begin("config", false);
+//   preferences.putString("server", server);
+//   preferences.putULong("delay", delay);
+//   preferences.putInt("uuid", uuid);
+//   preferences.end();
+// }
